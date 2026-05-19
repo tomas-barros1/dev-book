@@ -1,25 +1,50 @@
 package main
 
 import (
-	"log"
-
+	"dev-book-api/config"
 	"dev-book-api/database"
 	"dev-book-api/handlers"
+	"dev-book-api/repositories"
+	"dev-book-api/routes"
+	"dev-book-api/services"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	r := gin.Default()
-
-	db, err := database.ConnectDb()
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("Could not connect to database!")
+		log.Fatalf("failed to load config: %v", err)
 	}
 
-	handler := handlers.Handler{
-		DB: db,
+	db, err := database.ConnectDB(cfg)
+	if err != nil {
+		log.Fatalf("could not connect to database: %v", err)
 	}
 
-	r.Run()
+	userRepo := repositories.NewUserRepository(db)
+	postRepo := repositories.NewPostRepository(db)
+	followRepo := repositories.NewFollowRepository(db)
+	likeRepo := repositories.NewLikeRepository(db)
+
+	userService := services.NewUserService(userRepo, followRepo)
+	postService := services.NewPostService(postRepo, likeRepo, userRepo)
+
+	handler := &handlers.Handler{
+		UserService: userService,
+		PostService: postService,
+	}
+
+	r := gin.Default()
+	r.Use(func(c *gin.Context) {
+		c.Set("jwt_secret", cfg.JWTSecret)
+		c.Next()
+	})
+
+	routes.RegisterRoutes(handler, r, cfg.JWTSecret)
+
+	if err := r.Run(":" + cfg.ServerPort); err != nil {
+		log.Fatalf("failed to start server: %v", err)
+	}
 }
