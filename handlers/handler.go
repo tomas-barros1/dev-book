@@ -1,7 +1,9 @@
 package handlers
 
-import "database/sql"
+import (
+	"gorm.io/gorm"
+)
 
 type Handler struct {
-	DB *sql.DB
+	DB *gorm.DB
 }
