@@ -1,11 +1,19 @@
 package services
 
 import (
+	"dev-book-api/cache"
 	"dev-book-api/dtos"
 	"dev-book-api/models"
 	"dev-book-api/repositories"
+	"fmt"
+	"time"
 
 	"gorm.io/gorm"
+)
+
+const (
+	postCacheTTL = 5 * time.Minute
+	postCacheKey = "post:%d"
 )
 
 type PostService interface {
@@ -23,13 +31,15 @@ type postService struct {
 	postRepo repositories.PostRepository
 	likeRepo repositories.LikeRepository
 	userRepo repositories.UserRepository
+	cache    cache.Cache
 }
 
-func NewPostService(postRepo repositories.PostRepository, likeRepo repositories.LikeRepository, userRepo repositories.UserRepository) PostService {
+func NewPostService(postRepo repositories.PostRepository, likeRepo repositories.LikeRepository, userRepo repositories.UserRepository, c cache.Cache) PostService {
 	return &postService{
 		postRepo: postRepo,
 		likeRepo: likeRepo,
 		userRepo: userRepo,
+		cache:    c,
 	}
 }
 
@@ -48,14 +58,22 @@ func (s *postService) Create(req dtos.CreatePostRequest, userID uint) (*models.P
 }
 
 func (s *postService) GetByID(id uint) (*models.Post, error) {
-	post, err := s.postRepo.FindByID(id)
+	key := fmt.Sprintf(postCacheKey, id)
+	var post models.Post
+	if err := s.cache.Get(key, &post); err == nil {
+		return &post, nil
+	}
+
+	postDB, err := s.postRepo.FindByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
-	return post, nil
+
+	s.cache.Set(key, postDB, postCacheTTL)
+	return postDB, nil
 }
 
 func (s *postService) GetFeed(userID uint) ([]models.Post, error) {
@@ -97,6 +115,7 @@ func (s *postService) Update(id uint, req dtos.UpdatePostRequest, actorID uint) 
 		return nil, err
 	}
 
+	s.cache.Del(fmt.Sprintf(postCacheKey, id))
 	return post, nil
 }
 
@@ -113,6 +132,7 @@ func (s *postService) Delete(id uint, actorID uint) error {
 		return ErrUnauthorized
 	}
 
+	s.cache.Del(fmt.Sprintf(postCacheKey, id))
 	return s.postRepo.Delete(id)
 }
 

@@ -1,12 +1,20 @@
 package services
 
 import (
+	"dev-book-api/cache"
 	"dev-book-api/dtos"
 	"dev-book-api/models"
 	"dev-book-api/repositories"
+	"fmt"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+)
+
+const (
+	userCacheTTL = 5 * time.Minute
+	userCacheKey = "user:%d"
 )
 
 type UserService interface {
@@ -26,12 +34,14 @@ type UserService interface {
 type userService struct {
 	userRepo   repositories.UserRepository
 	followRepo repositories.FollowRepository
+	cache      cache.Cache
 }
 
-func NewUserService(userRepo repositories.UserRepository, followRepo repositories.FollowRepository) UserService {
+func NewUserService(userRepo repositories.UserRepository, followRepo repositories.FollowRepository, c cache.Cache) UserService {
 	return &userService{
 		userRepo:   userRepo,
 		followRepo: followRepo,
+		cache:      c,
 	}
 }
 
@@ -75,14 +85,22 @@ func (s *userService) Login(req dtos.LoginRequest) (*models.User, error) {
 }
 
 func (s *userService) GetByID(id uint) (*models.User, error) {
-	user, err := s.userRepo.FindByID(id)
+	key := fmt.Sprintf(userCacheKey, id)
+	var user models.User
+	if err := s.cache.Get(key, &user); err == nil {
+		return &user, nil
+	}
+
+	userDB, err := s.userRepo.FindByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
-	return user, nil
+
+	s.cache.Set(key, userDB, userCacheTTL)
+	return userDB, nil
 }
 
 func (s *userService) Search(query string) ([]models.User, error) {
@@ -114,6 +132,7 @@ func (s *userService) Update(id uint, req dtos.UpdateUserRequest, actorID uint) 
 		return nil, err
 	}
 
+	s.cache.Del(fmt.Sprintf(userCacheKey, id))
 	return user, nil
 }
 
@@ -129,6 +148,7 @@ func (s *userService) Delete(id uint, actorID uint) error {
 		return err
 	}
 
+	s.cache.Del(fmt.Sprintf(userCacheKey, id))
 	return s.userRepo.Delete(id)
 }
 
@@ -205,5 +225,10 @@ func (s *userService) UpdatePassword(id uint, req dtos.UpdatePasswordRequest, ac
 	}
 
 	user.Password = string(hashedPassword)
-	return s.userRepo.Update(user)
+	if err := s.userRepo.Update(user); err != nil {
+		return err
+	}
+
+	s.cache.Del(fmt.Sprintf(userCacheKey, id))
+	return nil
 }

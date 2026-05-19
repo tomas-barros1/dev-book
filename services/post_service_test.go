@@ -70,7 +70,7 @@ func TestPostService_Create_Success(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	postRepo.On("Create", mock.AnythingOfType("*models.Post")).Return(nil)
 	postRepo.On("FindByID", uint(0)).Return(&models.Post{
@@ -91,7 +91,7 @@ func TestPostService_GetByID_Success(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	post := &models.Post{
 		Title:  "Test",
@@ -111,7 +111,7 @@ func TestPostService_GetByID_NotFound(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	postRepo.On("FindByID", uint(999)).Return(nil, gorm.ErrRecordNotFound)
 
@@ -127,7 +127,7 @@ func TestPostService_GetFeed_Success(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	posts := []models.Post{{Title: "Post1"}, {Title: "Post2"}}
 	postRepo.On("FindFeed", uint(1)).Return(posts, nil)
@@ -143,7 +143,7 @@ func TestPostService_GetUserPosts_Success(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	userRepo.On("FindByID", uint(1)).Return(&models.User{}, nil)
 	posts := []models.Post{{Title: "Post1", UserID: 1}}
@@ -161,7 +161,7 @@ func TestPostService_GetUserPosts_UserNotFound(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	userRepo.On("FindByID", uint(999)).Return(nil, gorm.ErrRecordNotFound)
 
@@ -176,7 +176,7 @@ func TestPostService_Update_Success(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	post := &models.Post{Title: "Old Title", Content: "Old Content", UserID: 1}
 	postRepo.On("FindByID", uint(1)).Return(post, nil)
@@ -194,7 +194,7 @@ func TestPostService_Update_Unauthorized(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	post := &models.Post{Title: "Title", UserID: 1}
 	postRepo.On("FindByID", uint(1)).Return(post, nil)
@@ -210,7 +210,7 @@ func TestPostService_Update_NotFound(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	postRepo.On("FindByID", uint(999)).Return(nil, gorm.ErrRecordNotFound)
 
@@ -225,7 +225,7 @@ func TestPostService_Delete_Success(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	post := &models.Post{Title: "Title", UserID: 1}
 	postRepo.On("FindByID", uint(1)).Return(post, nil)
@@ -241,7 +241,7 @@ func TestPostService_Delete_Unauthorized(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	post := &models.Post{Title: "Title", UserID: 1}
 	postRepo.On("FindByID", uint(1)).Return(post, nil)
@@ -256,7 +256,7 @@ func TestPostService_Like_Success(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	post := &models.Post{Title: "Title", UserID: 2}
 	postRepo.On("FindByID", uint(1)).Return(post, nil)
@@ -274,7 +274,7 @@ func TestPostService_Like_AlreadyLiked(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	post := &models.Post{Title: "Title", UserID: 2}
 	postRepo.On("FindByID", uint(1)).Return(post, nil)
@@ -290,7 +290,7 @@ func TestPostService_Like_PostNotFound(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	postRepo.On("FindByID", uint(999)).Return(nil, gorm.ErrRecordNotFound)
 
@@ -304,7 +304,7 @@ func TestPostService_Unlike_Success(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	likeRepo.On("HasLiked", uint(1), uint(1)).Return(true, nil)
 	likeRepo.On("Delete", uint(1), uint(1)).Return(nil)
@@ -319,7 +319,7 @@ func TestPostService_Unlike_NotLiked(t *testing.T) {
 	postRepo := new(mockPostRepo)
 	likeRepo := new(mockLikeRepo)
 	userRepo := new(mockUserRepo)
-	svc := NewPostService(postRepo, likeRepo, userRepo)
+	svc := NewPostService(postRepo, likeRepo, userRepo, noopCache())
 
 	likeRepo.On("HasLiked", uint(1), uint(1)).Return(false, nil)
 

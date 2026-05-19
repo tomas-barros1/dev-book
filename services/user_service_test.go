@@ -1,6 +1,7 @@
 package services
 
 import (
+	"dev-book-api/cache"
 	"dev-book-api/dtos"
 	"dev-book-api/models"
 	"testing"
@@ -10,6 +11,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
+
+func noopCache() cache.Cache {
+	return cache.NewNoop()
+}
 
 type mockUserRepo struct {
 	mock.Mock
@@ -83,7 +88,7 @@ func (m *mockFollowRepo) IsFollowing(followerID, followingID uint) (bool, error)
 func TestUserService_Create_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	userRepo.On("FindByUsername", "newuser").Return(nil, gorm.ErrRecordNotFound)
 	userRepo.On("Create", mock.AnythingOfType("*models.User")).Return(nil)
@@ -100,7 +105,7 @@ func TestUserService_Create_Success(t *testing.T) {
 func TestUserService_Create_DuplicateUsername(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	existing := &models.User{Username: "existing"}
 	userRepo.On("FindByUsername", "existing").Return(existing, nil)
@@ -116,7 +121,7 @@ func TestUserService_Create_DuplicateUsername(t *testing.T) {
 func TestUserService_Login_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	user := &models.User{Username: "testuser", Password: string(hashed)}
@@ -133,7 +138,7 @@ func TestUserService_Login_Success(t *testing.T) {
 func TestUserService_Login_InvalidCredentials(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("correctpassword"), bcrypt.DefaultCost)
 	user := &models.User{Username: "testuser", Password: string(hashed)}
@@ -150,7 +155,7 @@ func TestUserService_Login_InvalidCredentials(t *testing.T) {
 func TestUserService_Login_UserNotFound(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	userRepo.On("FindByUsername", "nonexistent").Return(nil, gorm.ErrRecordNotFound)
 
@@ -165,7 +170,7 @@ func TestUserService_Login_UserNotFound(t *testing.T) {
 func TestUserService_GetByID_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	user := &models.User{Username: "testuser"}
 	userRepo.On("FindByID", uint(1)).Return(user, nil)
@@ -180,7 +185,7 @@ func TestUserService_GetByID_Success(t *testing.T) {
 func TestUserService_GetByID_NotFound(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	userRepo.On("FindByID", uint(999)).Return(nil, gorm.ErrRecordNotFound)
 
@@ -195,7 +200,7 @@ func TestUserService_GetByID_NotFound(t *testing.T) {
 func TestUserService_Search(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	users := []models.User{{Username: "joao"}, {Username: "joana"}}
 	userRepo.On("Search", "joa").Return(users, nil)
@@ -210,7 +215,7 @@ func TestUserService_Search(t *testing.T) {
 func TestUserService_Update_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	user := &models.User{Username: "oldname"}
 	userRepo.On("FindByID", uint(1)).Return(user, nil)
@@ -227,7 +232,7 @@ func TestUserService_Update_Success(t *testing.T) {
 func TestUserService_Update_Unauthorized(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	result, err := svc.Update(1, dtos.UpdateUserRequest{Username: "newname"}, 2)
 
@@ -239,7 +244,7 @@ func TestUserService_Update_Unauthorized(t *testing.T) {
 func TestUserService_Delete_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	user := &models.User{Username: "testuser"}
 	userRepo.On("FindByID", uint(1)).Return(user, nil)
@@ -254,7 +259,7 @@ func TestUserService_Delete_Success(t *testing.T) {
 func TestUserService_Delete_Unauthorized(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	err := svc.Delete(1, 2)
 
@@ -265,7 +270,7 @@ func TestUserService_Delete_Unauthorized(t *testing.T) {
 func TestUserService_Follow_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	user := &models.User{Username: "target"}
 	userRepo.On("FindByID", uint(2)).Return(user, nil)
@@ -282,7 +287,7 @@ func TestUserService_Follow_Success(t *testing.T) {
 func TestUserService_Follow_Self(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	err := svc.Follow(1, 1)
 
@@ -293,7 +298,7 @@ func TestUserService_Follow_Self(t *testing.T) {
 func TestUserService_Follow_AlreadyFollowing(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	user := &models.User{Username: "target"}
 	userRepo.On("FindByID", uint(2)).Return(user, nil)
@@ -308,7 +313,7 @@ func TestUserService_Follow_AlreadyFollowing(t *testing.T) {
 func TestUserService_Unfollow_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	followRepo.On("IsFollowing", uint(1), uint(2)).Return(true, nil)
 	followRepo.On("Delete", uint(2), uint(1)).Return(nil)
@@ -322,7 +327,7 @@ func TestUserService_Unfollow_Success(t *testing.T) {
 func TestUserService_Unfollow_NotFollowing(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	followRepo.On("IsFollowing", uint(1), uint(2)).Return(false, nil)
 
@@ -335,7 +340,7 @@ func TestUserService_Unfollow_NotFollowing(t *testing.T) {
 func TestUserService_GetFollowers_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	followers := []models.User{{Username: "follower1"}}
 	followRepo.On("GetFollowers", uint(1)).Return(followers, nil)
@@ -350,7 +355,7 @@ func TestUserService_GetFollowers_Success(t *testing.T) {
 func TestUserService_GetFollowing_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	following := []models.User{{Username: "following1"}}
 	followRepo.On("GetFollowing", uint(1)).Return(following, nil)
@@ -365,7 +370,7 @@ func TestUserService_GetFollowing_Success(t *testing.T) {
 func TestUserService_UpdatePassword_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("oldpass"), bcrypt.DefaultCost)
 	user := &models.User{Username: "testuser", Password: string(hashed)}
@@ -381,7 +386,7 @@ func TestUserService_UpdatePassword_Success(t *testing.T) {
 func TestUserService_UpdatePassword_WrongOldPassword(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("oldpass"), bcrypt.DefaultCost)
 	user := &models.User{Username: "testuser", Password: string(hashed)}
@@ -396,7 +401,7 @@ func TestUserService_UpdatePassword_WrongOldPassword(t *testing.T) {
 func TestUserService_UpdatePassword_Unauthorized(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	followRepo := new(mockFollowRepo)
-	svc := NewUserService(userRepo, followRepo)
+	svc := NewUserService(userRepo, followRepo, noopCache())
 
 	err := svc.UpdatePassword(1, dtos.UpdatePasswordRequest{OldPassword: "oldpass", NewPassword: "newpass"}, 2)
 
