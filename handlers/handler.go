@@ -1,9 +1,8 @@
 package handlers
 
-import (
-	"gorm.io/gorm"
-)
+import "dev-book-api/services"
 
 type Handler struct {
-	DB *gorm.DB
+	UserService services.UserService
+	PostService services.PostService
 }
